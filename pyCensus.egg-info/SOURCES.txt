@@ -1,0 +1,15 @@
+LICENSE.txt
+README.md
+pyproject.toml
+setup.cfg
+setup.py
+pyCensus/__init__.py
+pyCensus/censusdata.py
+pyCensus/endpoints.py
+pyCensus/search.py
+pyCensus.egg-info/PKG-INFO
+pyCensus.egg-info/SOURCES.txt
+pyCensus.egg-info/dependency_links.txt
+pyCensus.egg-info/entry_points.txt
+pyCensus.egg-info/requires.txt
+pyCensus.egg-info/top_level.txt

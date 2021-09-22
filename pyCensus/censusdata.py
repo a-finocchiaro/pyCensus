@@ -1,20 +1,31 @@
 """
-pyACS.py
-Written by:Aaron Finocchiaro
+censusdata.py
 
-A class designed to specifically work with the American Community Survey API from census.gov.
+A class designed to create a censusData object and interacts with the Census Bureau API. Once
+a censusData object is insantiated, it will dynamically request the data from the API and
+create a Pandas dataframe for all of the returned data.
 """
-import pandas as pd
 import re
-import requests
 import urllib.parse as urlparse
-from .search import request_data
-
-BASE_URL = "https://api.census.gov/data/"
+import pandas as pd
+import requests
+from pyCensus import BASE_URL
 
 class censusData():
     """
-        
+    Requests data from the Census Bureau API and creates a Pandas dataframe to store returned
+    data so it can be used for analysis.
+
+    TODO: Add ability to use an API key
+
+    Input Args:
+        dataset = list; The list of abbreviations for the dataset name path. This can be found
+                    by going to the https://api.census.gov/data.html page or running find-endpoint
+                    and using the value in the "Dataset Name" column. 
+        year = int; the Year that corresponds to the chosen dataset.
+        query_dict = dict; The dict of how the query should be structured. This should include any
+                    other necessary pieces to construct the query like "for" and "in". See the
+                    examples for the chosen dataset for help with constructing a query.
     """
     def __init__(self, dataset:list, year:int, query_dict:dict):
 
@@ -26,7 +37,7 @@ class censusData():
 
     def _request_data(self) -> list:
         """
-        Requests data from the census API for the ACS endpoint.
+        Requests data from the census API for the specified endpoint.
 
         input args:
             - none
@@ -38,7 +49,7 @@ class censusData():
         query = dict(urlparse.parse_qsl(url_parts[4]))
         query.update(self.query_dict)
         url_parts[4] = urlparse.urlencode(query)
-        
+
         raw_acs_data = requests.get(urlparse.urlunparse(url_parts))
 
         raw_acs_data.raise_for_status()
@@ -46,7 +57,7 @@ class censusData():
 
     def _make_df(self) -> pd.DataFrame:
         """
-        Construct a pandas dataframe from the raw json data from the ACS api call.
+        Construct a pandas dataframe from the raw json data.
 
         input args:
             - none
@@ -62,7 +73,9 @@ class censusData():
         Replaces the column names with the actual variable names.
 
         Input arguments:
-            - none
+            - index_col = str; The column that should be the index column
+            - replace_col_names = bool; True will replace column names with the variable names,
+                                        False will leave columns named with variable ID.
 
         returns pandas dataframe
         """
@@ -72,15 +85,15 @@ class censusData():
         # set index
         if index_col:
             clean_df = clean_df.set_index(index_col)
-        
+
         # get variable names and replace column names with meaningful names
         if replace_col_names:
-            group = re.match('(?:^group\((.+)\))', self.query_dict['get'])[1]
-            if group:    
+            group = re.match(r'(?:^group\((.+)\))', self.query_dict['get'])[1]
+            if group:
                 url = f"{BASE_URL}{self.year}/{'/'.join(self.dataset)}/groups/{group}.json"
             else:
-                url = f"{base_url}{year}/{'/'.join(dataset_name)}/variables.json"
-            
+                url = f"{BASE_URL}{self.year}/{'/'.join(self.dataset)}/variables.json"
+
             json_vars = requests.get(url).json()
             name_label_dict = {var:name['label'] for var,name in json_vars['variables'].items()}
 

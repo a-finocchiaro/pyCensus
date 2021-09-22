@@ -1,0 +1,6 @@
+[console_scripts]
+census-endpoint = pyCensus.endpoints:main
+census-geography = pyCensus.search:get_geography
+census-groups = pyCensus.search:get_groups
+census-variables = pyCensus.search:get_variables
+

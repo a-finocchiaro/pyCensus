@@ -1,42 +1,33 @@
 """
 Includes various search functions to help simplify locating data to request.
 """
+import argparse
 import pandas as pd
 import requests
-import urllib.parse as urlparse
-from pyCensus import all_endpoints_df
 from rich.console import Console
 from rich.table import Table
 
-def find_endpoint(text='', col='title'):
+def parse_args() -> tuple:
     """
-    Gets all available API endpoints from the Census website and puts them into a Pandas
-    dataframe. Then searches the dataframe for a matching string.
+    Parses args for dataset-specific queries.
+    returns tuple
     """
-    # filter based on search terms
-    filtered_df = all_endpoints_df[all_endpoints_df[col].str.contains(text)]
+    ap = argparse.ArgumentParser()
+    ap.add_argument('year', type=int, help='the year corresponding to the dataset')
+    ap.add_argument('dataset_name', nargs='+', type=str, help='the json page to get for a dataset.')
+    args = ap.parse_args()
+    return args.year, args.dataset_name
 
-    # return data to console in table
-    table = Table(title="Census API Endpoints")
-    table.add_column("Title", justify="right", style="cyan")
-    table.add_column("Dataset Name", justify="right", style="yellow")
-    table.add_column("Year", justify="right", style="purple")
-    table.add_column("Description", justify="right", style="green")
-    table.add_column("URL", justify="right")
-
-    for index,row in filtered_df.iterrows():
-        table.add_row(row['title'],
-                      ', '.join(row['c_dataset']),
-                      str(row['c_vintage']).rstrip('.0'),
-                      row['description'],
-                      row['accessURL'])
-
-    console = Console()
-    console.print(table)
-
-def request_data(year:int, dataset_name:list, dataset_info:str):
+def request_json(year:int, dataset_name:list, dataset_info:str) -> dict:
     """
-    gets variables, geography, groups, or examples for any API endpoint
+    Gets variables, geography, groups, or examples for any dataset.
+
+    input args:
+        - year = int; the year that the dataset is from
+        - dataset_name = list; th estring path that corresponds to a dataset
+        - dataset_info = str; the json page to get for a dataset.
+
+    returns dict
     """
     base_url = "https://api.census.gov/data/"
     query_url = f"{base_url}{year}/{'/'.join(dataset_name)}/{dataset_info}.json"
@@ -44,9 +35,16 @@ def request_data(year:int, dataset_name:list, dataset_info:str):
     results = requests.get(query_url)
     return results.json()
 
-def get_variables(year:int, dataset_name:list):
+def get_variables():
+    """
+    Gets all possible variables for a specific dataset.
 
-    json_data = request_data(year, dataset_name, 'variables')
+    input args:
+        - year = int; the year that the dataset is from
+        - dataset_name = list; th estring path that corresponds to a dataset
+    """
+    year, dataset_name = parse_args()
+    json_data = request_json(year, dataset_name, 'variables')
 
     df = pd.DataFrame(json_data['variables']).transpose()
 
@@ -61,16 +59,23 @@ def get_variables(year:int, dataset_name:list):
     for index,row in df.iterrows():
         table.add_row(index,
                       row['label'])
-    
+
     console = Console()
     console.print(table)
 
-def get_geography(year:int, dataset_name:list):
+def get_geography():
+    """
+    Gets all possible geography values for a specific dataset.
 
-    json_data = request_data(year, dataset_name, 'geography')
+    input args:
+        - year = int; the year that the dataset is from
+        - dataset_name = list; th estring path that corresponds to a dataset
+    """
+    year, dataset_name = parse_args()
+    json_data = request_json(year, dataset_name, 'geography')
 
     df = pd.DataFrame(json_data['fips'])
-    
+
     # set NaN values to string values of 'None'
     df = df.where(pd.notnull(df), str(None))
 
@@ -80,20 +85,27 @@ def get_geography(year:int, dataset_name:list):
     table.add_column("Name", justify="right", style="Green")
     table.add_column("Requires", justify="right", style="Purple")
 
-    for index,row in df.iterrows():
-        table.add_row(row['geoLevelDisplay'],
-                      row['name'],
-                      ', '.join(row['requires']) if type(row['requires']) == list else row['requires'])
-    
+    for row in df.iterrows():
+        table.add_row(row[1]['geoLevelDisplay'],
+                      row[1]['name'],
+                      ', '.join(row[1]['requires']) if isinstance(row[1]['requires'], list) else row[1]['requires'])
+
     console = Console()
     console.print(table)
 
-def get_groups(year:int, dataset_name:list):
+def get_groups():
+    """
+    Get all groups for a specific dataset.
 
-    json_data = request_data(year, dataset_name, 'groups')
+    input args:
+        - year = int; the year that the dataset is from
+        - dataset_name = list; th estring path that corresponds to a dataset
+    """
+    year, dataset_name = parse_args()
+    json_data = request_json(year, dataset_name, 'groups')
 
     df = pd.DataFrame(json_data['groups'])
-    
+
     # set NaN values to string values of 'None'
     df = df.where(pd.notnull(df), str(None))
 
@@ -102,9 +114,12 @@ def get_groups(year:int, dataset_name:list):
     table.add_column("Name", justify="right", style="cyan")
     table.add_column("Description", justify="right", style="Green")
 
-    for index,row in df.iterrows():
-        table.add_row(row['name'],
-                      row['description'])
-    
+    for row in df.iterrows():
+        table.add_row(row[1]['name'],
+                      row[1]['description'])
+
     console = Console()
     console.print(table)
+
+if __name__=='__main__':
+    get_geography()
