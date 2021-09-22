@@ -88,8 +88,8 @@ class censusData():
 
         # get variable names and replace column names with meaningful names
         if replace_col_names:
-            group = re.match(r'(?:^group\((.+)\))', self.query_dict['get'])[1]
-            if group:
+            if re.search(r"^group", self.query_dict['get']):
+                group = re.match(r'(?:^group\((.+)\))', self.query_dict['get'])[1]
                 url = f"{BASE_URL}{self.year}/{'/'.join(self.dataset)}/groups/{group}.json"
             else:
                 url = f"{BASE_URL}{self.year}/{'/'.join(self.dataset)}/variables.json"
